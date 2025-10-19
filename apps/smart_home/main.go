@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -17,8 +18,19 @@ import (
 )
 
 func main() {
-	// Set up database connection
-	dbURL := getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/smarthome")
+	// Читаем переменные окружения для подключения к БД
+	host := getEnv("DB_HOST", "localhost")
+	port := getEnv("DB_PORT", "5432")
+	user := getEnv("DB_USER", "postgres")
+	password := getEnv("DB_PASSWORD", "postgres")
+	dbname := getEnv("DB_NAME", "smarthome")
+
+	// Формируем DATABASE_URL
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		user, password, host, port, dbname)
+
+	log.Printf("Connecting to database: host=%s port=%s user=%s dbname=%s", host, port, user, dbname)
+
 	database, err := db.New(dbURL)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
@@ -34,6 +46,18 @@ func main() {
 
 	// Initialize router
 	router := gin.Default()
+
+	// CORS middleware (опционально, но полезно)
+	router.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
 
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {

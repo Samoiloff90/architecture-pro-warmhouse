@@ -203,7 +203,7 @@ Locations - название комнаты, sensorId - идентификато
 		default:
 			sensorID = "0"
 		}
-	}
+	}[smarthome-api.postman_collection.json](..%2F..%2F%EA%E0%EA%EE%E9%F2%EE%20%F8%E0%E1%EB%EE%ED%20%E8%E7%20%EF%E5%F0%E2%EE%E3%EE%20%F1%EF%F0%E8%ED%F2%E0%2Farchitecture-warmhouse%2Farchitecture-sprint-1%2Fapps%2Fsmarthome-api.postman_collection.json)
 ```
 
 2) Приложение следует упаковать в Docker и добавить в docker-compose. Порт по умолчанию должен быть 8081

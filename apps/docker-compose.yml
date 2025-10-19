@@ -1,36 +1,72 @@
 version: '3.8'
 
 services:
+  # PostgreSQL база данных
   postgres:
-    image: postgres:16-alpine
-    container_name: smarthome-postgres
-  ## тут нужно добавить настройки
+    image: postgres:15-alpine
+    container_name: warmhouse-postgres
+    environment:
+      POSTGRES_USER: warmhouse
+      POSTGRES_PASSWORD: warmhouse123
+      POSTGRES_DB: warmhouse
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./smart_home/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - warmhouse-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warmhouse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # Temperature API (новый сервис)
   temperature-api:
-  ## тут нужно добавить приложение
+    build:
+      context: ./temperature-api
+      dockerfile: Dockerfile
+    container_name: warmhouse-temperature-api
+    ports:
+      - "8081:8081"
+    networks:
+      - warmhouse-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
-  app:
+  # Smart Home монолит (Go приложение)
+  smart-home:
     build:
       context: ./smart_home
       dockerfile: Dockerfile
-    container_name: smarthome-app
+    container_name: warmhouse-smart-home
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: warmhouse
+      DB_PASSWORD: warmhouse123
+      DB_NAME: warmhouse
+      TEMPERATURE_API_URL: http://temperature-api:8081
+    ports:
+      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
       temperature-api:
         condition: service_started
-    environment:
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/smarthome
-      - TEMPERATURE_API_URL=http://temperature-api:8081
-    ports:
-      - "8080:8080"
-    restart: unless-stopped
     networks:
-      - smarthome-network
+      - warmhouse-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+    driver: local
 
 networks:
-  smarthome-network:
+  warmhouse-network:
     driver: bridge
