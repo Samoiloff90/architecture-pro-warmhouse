@@ -1,7 +1,7 @@
-version: '3.8'
-
 services:
-  # PostgreSQL база данных
+  # ============ DATABASES ============
+
+  # PostgreSQL для монолита (smart_home)
   postgres:
     image: postgres:15-alpine
     container_name: warmhouse-postgres
@@ -22,7 +22,72 @@ services:
       timeout: 5s
       retries: 5
 
-  # Temperature API (новый сервис)
+  # PostgreSQL для Device Service
+  device-db:
+    image: postgres:15-alpine
+    container_name: warmhouse-device-db
+    environment:
+      POSTGRES_USER: warmhouse
+      POSTGRES_PASSWORD: warmhouse123
+      POSTGRES_DB: device_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - device_db_data:/var/lib/postgresql/data
+      - ./device-service/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - warmhouse-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warmhouse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL для Telemetry Service
+  telemetry-db:
+    image: postgres:15-alpine
+    container_name: warmhouse-telemetry-db
+    environment:
+      POSTGRES_USER: warmhouse
+      POSTGRES_PASSWORD: warmhouse123
+      POSTGRES_DB: telemetry_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - telemetry_db_data:/var/lib/postgresql/data
+      - ./telemetry-service/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - warmhouse-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warmhouse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============ MESSAGE BROKER ============
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: warmhouse-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - warmhouse-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============ MICROSERVICES ============
+
+  # Temperature API (External service)
   temperature-api:
     build:
       context: ./temperature-api
@@ -33,13 +98,62 @@ services:
     networks:
       - warmhouse-network
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8081/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
       interval: 10s
       timeout: 5s
       retries: 3
     restart: unless-stopped
 
-  # Smart Home монолит (Go приложение)
+  # Device Service (Python/FastAPI)
+  device-service:
+    build:
+      context: ./device-service
+      dockerfile: Dockerfile
+    container_name: warmhouse-device-service
+    environment:
+      DB_HOST: device-db
+      DB_PORT: 5432
+      DB_USER: warmhouse
+      DB_PASSWORD: warmhouse123
+      DB_NAME: device_db
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    ports:
+      - "8082:8082"
+    depends_on:
+      device-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - warmhouse-network
+    restart: unless-stopped
+
+  # Telemetry Service (Node.js/Express)
+  telemetry-service:
+    build:
+      context: ./telemetry-service
+      dockerfile: Dockerfile
+    container_name: warmhouse-telemetry-service
+    environment:
+      DB_HOST: telemetry-db
+      DB_PORT: 5432
+      DB_USER: warmhouse
+      DB_PASSWORD: warmhouse123
+      DB_NAME: telemetry_db
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      PORT: 8083
+    ports:
+      - "8083:8083"
+    depends_on:
+      telemetry-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - warmhouse-network
+    restart: unless-stopped
+
+  # Smart Home Monolith (Go/Gin)
   smart-home:
     build:
       context: ./smart_home
@@ -52,6 +166,8 @@ services:
       DB_PASSWORD: warmhouse123
       DB_NAME: warmhouse
       TEMPERATURE_API_URL: http://temperature-api:8081
+      DEVICE_SERVICE_URL: http://device-service:8082
+      TELEMETRY_SERVICE_URL: http://telemetry-service:8083
     ports:
       - "8080:8080"
     depends_on:
@@ -59,12 +175,22 @@ services:
         condition: service_healthy
       temperature-api:
         condition: service_started
+      device-service:
+        condition: service_started
+      telemetry-service:
+        condition: service_started
     networks:
       - warmhouse-network
     restart: unless-stopped
 
 volumes:
   postgres_data:
+    driver: local
+  device_db_data:
+    driver: local
+  telemetry_db_data:
+    driver: local
+  rabbitmq_data:
     driver: local
 
 networks:

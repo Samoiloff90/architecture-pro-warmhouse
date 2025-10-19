@@ -47,7 +47,7 @@ func main() {
 	// Initialize router
 	router := gin.Default()
 
-	// CORS middleware (опционально, но полезно)
+	// CORS middleware
 	router.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
@@ -66,12 +66,19 @@ func main() {
 		})
 	})
 
-	// API routes
+	// API routes v1 (legacy - sensors)
 	apiRoutes := router.Group("/api/v1")
 
-	// Register sensor routes
+	// Register sensor routes (старая функциональность монолита)
 	sensorHandler := handlers.NewSensorHandler(database, temperatureService)
 	sensorHandler.RegisterRoutes(apiRoutes)
+
+	// ============ НОВЫЕ ИНТЕГРАЦИОННЫЕ РОУТЫ ============
+	// API v2 routes (microservices integration)
+	integrationHandler := handlers.NewIntegrationHandler()
+	integrationHandler.RegisterRoutes(router.Group("/api"))
+	log.Println("Integration routes registered (Device Service & Telemetry Service)")
+	// =====================================================
 
 	// Start server
 	srv := &http.Server{
