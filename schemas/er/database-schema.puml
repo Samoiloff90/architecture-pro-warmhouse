@@ -1,0 +1,206 @@
+@startuml Warmhouse_ER_Diagram
+
+!define table(x) class x << (T,#FFAAAA) >>
+!define primary_key(x) <u>x</u>
+!define foreign_key(x) #x
+
+hide methods
+hide stereotypes
+
+' ====== User Management Domain ======
+
+table(Tenant) {
+  primary_key(id): UUID
+  --
+  name: VARCHAR(255)
+  domain: VARCHAR(100)
+  status: ENUM(active, suspended)
+  created_at: TIMESTAMP
+}
+
+table(User) {
+  primary_key(id): UUID
+  --
+  foreign_key(tenant_id): UUID
+  email: VARCHAR(255)
+  password_hash: VARCHAR(255)
+  first_name: VARCHAR(100)
+  last_name: VARCHAR(100)
+  role: ENUM(owner, admin, user)
+  status: ENUM(active, inactive)
+  created_at: TIMESTAMP
+  last_login: TIMESTAMP
+}
+
+table(House) {
+  primary_key(id): UUID
+  --
+  foreign_key(user_id): UUID
+  name: VARCHAR(255)
+  address: TEXT
+  timezone: VARCHAR(50)
+  created_at: TIMESTAMP
+}
+
+table(Room) {
+  primary_key(id): UUID
+  --
+  foreign_key(house_id): UUID
+  name: VARCHAR(100)
+  floor: INT
+  area: DECIMAL(10,2)
+}
+
+' ====== Device Management Domain ======
+
+table(DeviceType) {
+  primary_key(id): UUID
+  --
+  name: VARCHAR(100)
+  category: ENUM(sensor, actuator, controller)
+  manufacturer: VARCHAR(100)
+  model: VARCHAR(100)
+  capabilities: JSONB
+}
+
+table(Device) {
+  primary_key(id): UUID
+  --
+  foreign_key(device_type_id): UUID
+  foreign_key(room_id): UUID
+  serial_number: VARCHAR(100)
+  name: VARCHAR(255)
+  status: ENUM(active, inactive, error)
+  firmware_version: VARCHAR(50)
+  last_seen: TIMESTAMP
+  created_at: TIMESTAMP
+  metadata: JSONB
+}
+
+' ====== Telemetry Domain ======
+
+table(TelemetryData) {
+  primary_key(id): BIGSERIAL
+  --
+  foreign_key(device_id): UUID
+  metric_name: VARCHAR(100)
+  value: DOUBLE PRECISION
+  unit: VARCHAR(20)
+  quality: ENUM(good, bad, uncertain)
+  timestamp: TIMESTAMPTZ
+  --
+  INDEX: (device_id, timestamp DESC)
+  INDEX: (metric_name, timestamp DESC)
+}
+
+table(Measurement) {
+  primary_key(id): UUID
+  --
+  foreign_key(device_id): UUID
+  metric_name: VARCHAR(100)
+  avg_value: DOUBLE PRECISION
+  min_value: DOUBLE PRECISION
+  max_value: DOUBLE PRECISION
+  count: INT
+  interval: ENUM(1min, 5min, 1hour, 1day)
+  period_start: TIMESTAMPTZ
+  period_end: TIMESTAMPTZ
+}
+
+' ====== Automation Domain ======
+
+table(Scenario) {
+  primary_key(id): UUID
+  --
+  foreign_key(user_id): UUID
+  name: VARCHAR(255)
+  description: TEXT
+  is_active: BOOLEAN
+  created_at: TIMESTAMP
+}
+
+table(Rule) {
+  primary_key(id): UUID
+  --
+  foreign_key(scenario_id): UUID
+  foreign_key(device_id): UUID
+  name: VARCHAR(255)
+  description: TEXT
+  is_active: BOOLEAN
+  priority: INT
+  created_at: TIMESTAMP
+}
+
+table(Trigger) {
+  primary_key(id): UUID
+  --
+  foreign_key(rule_id): UUID
+  trigger_type: ENUM(threshold, schedule, event)
+  condition: JSONB
+  --
+  Example conditions:
+  {"metric": "temperature", "operator": "<", "value": 18}
+  {"time": "08:00", "days": ["Mon", "Tue", "Wed"]}
+}
+
+table(Action) {
+  primary_key(id): UUID
+  --
+  foreign_key(rule_id): UUID
+  foreign_key(target_device_id): UUID
+  action_type: ENUM(set_value, send_command, notify)
+  parameters: JSONB
+  delay: INT
+  --
+  Example parameters:
+  {"command": "turn_on", "value": 25}
+}
+
+' ====== Notification Domain ======
+
+table(NotificationChannel) {
+  primary_key(id): UUID
+  --
+  foreign_key(user_id): UUID
+  channel_type: ENUM(email, push, sms, webhook)
+  destination: VARCHAR(255)
+  is_enabled: BOOLEAN
+  verified: BOOLEAN
+}
+
+table(Notification) {
+  primary_key(id): UUID
+  --
+  foreign_key(user_id): UUID
+  foreign_key(channel_id): UUID
+  title: VARCHAR(255)
+  message: TEXT
+  notification_type: ENUM(info, warning, critical)
+  status: ENUM(pending, sent, failed)
+  sent_at: TIMESTAMP
+  created_at: TIMESTAMP
+  metadata: JSONB
+}
+
+' ====== Relationships ======
+
+Tenant "1" -- "N" User
+User "1" -- "N" House
+House "1" -- "N" Room
+Room "1" -- "N" Device
+DeviceType "1" -- "N" Device
+Device "1" -- "N" TelemetryData
+Device "1" -- "N" Measurement
+Device "1" -- "N" Rule
+
+User "1" -- "N" Scenario
+Scenario "1" -- "N" Rule
+Rule "1" -- "N" Trigger
+Rule "1" -- "N" Action
+Device "1" -- "N" Action : target
+
+User "1" -- "N" NotificationChannel
+User "1" -- "N" Notification
+NotificationChannel "1" -- "N" Notification
+
+@enduml

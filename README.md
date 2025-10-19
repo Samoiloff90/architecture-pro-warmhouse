@@ -99,7 +99,33 @@
 
 # Задание 3. Разработка ER-диаграммы
 
-Добавьте сюда ER-диаграмму. Она должна отражать ключевые сущности системы, их атрибуты и тип связей между ними.
+![database-schema.png](schemas%2Fer%2Fdatabase-schema.png)
+
+Диаграмма отражает структуру данных для микросервисной архитектуры Warmhouse с выделением доменов:
+
+**User Management Domain:**
+- `Tenant`, `User`, `House`, `Room` — мультитенантная структура с иерархией владения
+
+**Device Management Domain:**
+- `DeviceType`, `Device` — типы устройств и экземпляры с метаданными
+
+**Telemetry Domain:**
+- `TelemetryData` — time-series данные с индексами по device_id и timestamp
+- `Measurement` — агрегированные измерения по интервалам (1min, 5min, 1hour, 1day)
+
+**Automation Domain:**
+- `Scenario`, `Rule`, `Trigger`, `Action` — сценарии автоматизации с условиями и действиями
+- JSONB поля для гибкости условий и параметров
+
+**Notification Domain:**
+- `NotificationChannel`, `Notification` — многоканальная система уведомлений
+
+**Ключевые связи:**
+- 1:N между `User` и `House` (пользователь владеет несколькими домами)
+- 1:N между `House` и `Room` и `Device` (иерархия устройств)
+- 1:N между `Device` и `TelemetryData` (устройство генерирует телеметрию)
+- M:N между `Rule` и `Device` через таблицы `Trigger` и `Action`
+
 
 # Задание 4. Создание и документирование API
 
