@@ -1,0 +1,75 @@
+@startuml Device_Service_Classes
+!theme plain
+
+title Device Service - Диаграмма классов
+
+class Device {
+    - id: UUID
+    - name: String
+    - type: DeviceType
+    - location: String
+    - status: DeviceStatus
+    - value: Float
+    - unit: String
+    - lastUpdated: Timestamp
+    - createdAt: Timestamp
+    --
+    + updateValue(value: Float): void
+    + changeStatus(status: DeviceStatus): void
+}
+
+enum DeviceType {
+    TEMPERATURE
+    HUMIDITY
+    MOTION
+    LIGHT
+}
+
+enum DeviceStatus {
+    ACTIVE
+    INACTIVE
+    ERROR
+}
+
+class DeviceRepository {
+    - db: Database
+    --
+    + findAll(): List<Device>
+    + findById(id: UUID): Device
+    + create(device: Device): Device
+    + update(device: Device): Device
+    + delete(id: UUID): void
+}
+
+class DeviceManager {
+    - repository: DeviceRepository
+    - validator: DeviceValidator
+    - eventPublisher: EventPublisher
+    --
+    + createDevice(data: CreateDeviceDTO): Device
+    + updateDevice(id: UUID, data: UpdateDeviceDTO): Device
+    + deleteDevice(id: UUID): void
+}
+
+class DeviceValidator {
+    + validate(device: Device): ValidationResult
+    + validateType(type: String): boolean
+    + validateLocation(location: String): boolean
+}
+
+class EventPublisher {
+    - broker: MessageBroker
+    --
+    + publishDeviceCreated(device: Device): void
+    + publishDeviceUpdated(device: Device): void
+    + publishDeviceDeleted(id: UUID): void
+}
+
+DeviceManager --> DeviceRepository
+DeviceManager --> DeviceValidator
+DeviceManager --> EventPublisher
+DeviceRepository --> Device
+Device --> DeviceType
+Device --> DeviceStatus
+
+@enduml

@@ -1,0 +1,62 @@
+@startuml Warmhouse_Container_TO_BE
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Диаграмма контейнеров Warmhouse (TO-BE) - Микросервисная архитектура
+
+Person(user, "Пользователь", "Владелец умного дома")
+Person(specialist, "Специалист поддержки")
+
+System_Boundary(warmhouse_system, "Warmhouse Ecosystem") {
+    Container(api_gateway, "API Gateway", "Kong/NGINX", "Единая точка входа, маршрутизация, JWT авторизация")
+
+    Container(device_service, "Device Service", "Go", "Управление устройствами и датчиками")
+    ContainerDb(device_db, "Device DB", "PostgreSQL", "Метаданные устройств")
+
+    Container(telemetry_service, "Telemetry Service", "Python/FastAPI", "Сбор и хранение телеметрии")
+    ContainerDb(telemetry_db, "Telemetry DB", "TimescaleDB", "Time-series данные измерений")
+
+    Container(automation_service, "Automation Service", "Node.js", "Правила и сценарии автоматизации")
+    ContainerDb(automation_db, "Automation DB", "PostgreSQL", "Правила, триггеры, сценарии")
+
+    Container(user_service, "User Service", "Java/Spring", "Пользователи и доступ")
+    ContainerDb(user_db, "User DB", "PostgreSQL", "Пользователи, роли, тенанты")
+
+    Container(notification_service, "Notification Service", "Python", "Уведомления")
+    ContainerDb(notification_db, "Notification DB", "PostgreSQL", "Очередь уведомлений")
+
+    Container(message_broker, "Message Broker", "RabbitMQ", "Асинхронная коммуникация")
+}
+
+System_Ext(temperature_api, "Temperature API", "Внешний сервис погоды")
+System_Ext(iot_devices, "IoT Датчики", "Физические устройства")
+System_Ext(email_service, "Email Provider", "SendGrid/SES")
+System_Ext(push_service, "Push Service", "Firebase/OneSignal")
+
+Rel(user, api_gateway, "HTTP/REST", "HTTPS")
+Rel(specialist, api_gateway, "HTTP/REST", "HTTPS")
+
+Rel(api_gateway, device_service, "HTTP/REST", "JSON")
+Rel(api_gateway, telemetry_service, "HTTP/REST", "JSON")
+Rel(api_gateway, automation_service, "HTTP/REST", "JSON")
+Rel(api_gateway, user_service, "HTTP/REST", "JSON")
+
+Rel(device_service, device_db, "SQL", "CRUD")
+Rel(telemetry_service, telemetry_db, "SQL", "INSERT/SELECT")
+Rel(automation_service, automation_db, "SQL", "CRUD")
+Rel(user_service, user_db, "SQL", "CRUD")
+Rel(notification_service, notification_db, "SQL", "CRUD")
+
+Rel(iot_devices, api_gateway, "HTTP/REST", "Телеметрия")
+Rel(telemetry_service, message_broker, "Publish", "TelemetryReceived event")
+Rel(automation_service, message_broker, "Subscribe", "Обработка событий")
+Rel(automation_service, message_broker, "Publish", "ActionTriggered event")
+Rel(notification_service, message_broker, "Subscribe", "Отправка уведомлений")
+
+Rel(notification_service, email_service, "SMTP/API", "Email")
+Rel(notification_service, push_service, "API", "Push notifications")
+
+Rel(telemetry_service, temperature_api, "HTTP", "Внешние данные")
+
+@enduml

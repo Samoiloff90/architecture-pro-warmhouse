@@ -1,0 +1,28 @@
+@startuml Telemetry_Service_Components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Компоненты Telemetry Service
+
+Container_Boundary(telemetry_service, "Telemetry Service") {
+    Component(telemetry_api, "Telemetry API", "REST Controller", "Приём телеметрии от датчиков")
+    Component(data_processor, "Data Processor", "Business Logic", "Валидация, трансформация данных")
+    Component(aggregator, "Aggregator", "Analytics", "Агрегация данных по интервалам")
+    Component(timeseries_repo, "TimeSeries Repository", "Data Access", "Запись в TimescaleDB")
+    Component(event_publisher, "Event Publisher", "Message Producer", "Публикация событий телеметрии")
+}
+
+ContainerDb(telemetry_db, "TimescaleDB", "Time-series DB")
+Container(message_broker, "RabbitMQ", "Message Broker")
+System_Ext(iot_devices, "IoT Датчики")
+
+Rel(iot_devices, telemetry_api, "POST /telemetry", "JSON")
+Rel(telemetry_api, data_processor, "Processes")
+Rel(data_processor, timeseries_repo, "Saves")
+Rel(data_processor, event_publisher, "Publishes")
+Rel(timeseries_repo, telemetry_db, "INSERT")
+Rel(aggregator, telemetry_db, "SELECT with aggregations")
+Rel(event_publisher, message_broker, "TelemetryReceived event")
+
+@enduml

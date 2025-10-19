@@ -1,0 +1,28 @@
+@startuml Automation_Service_Components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Компоненты Automation Service
+
+Container_Boundary(automation_service, "Automation Service") {
+    Component(rule_api, "Rule API", "REST Controller", "CRUD правил и сценариев")
+    Component(rule_engine, "Rule Engine", "Business Logic", "Оценка условий правил")
+    Component(event_listener, "Event Listener", "Message Consumer", "Подписка на события телеметрии")
+    Component(action_executor, "Action Executor", "Command Executor", "Выполнение действий (включить/выключить)")
+    Component(rule_repo, "Rule Repository", "Data Access", "Хранение правил")
+}
+
+ContainerDb(automation_db, "Automation DB", "PostgreSQL")
+Container(message_broker, "RabbitMQ", "Message Broker")
+Container(device_service, "Device Service", "Microservice")
+
+Rel(event_listener, message_broker, "Subscribe", "TelemetryReceived")
+Rel(event_listener, rule_engine, "Triggers evaluation")
+Rel(rule_engine, rule_repo, "Loads rules")
+Rel(rule_repo, automation_db, "SQL")
+Rel(rule_engine, action_executor, "Executes action")
+Rel(action_executor, device_service, "HTTP/REST", "Change device state")
+Rel(rule_api, rule_repo, "CRUD")
+
+@enduml

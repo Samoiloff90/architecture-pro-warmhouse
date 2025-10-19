@@ -67,30 +67,35 @@
 Если вы считаете, что текущее решение не вызывает проблем, аргументируйте свою позицию.
 
 ### 5. Визуализация контекста системы — диаграмма С4
+**AS-IS**
+
 ![as-is.png](schemas%2Fcontext%2Fas-is.png)
-
-
-Замените `Текст ссылки` текстом, который хотите использовать для ссылки. Вместо `URL` вставьте адрес, на который должна вести ссылка. Например:
-
-```markdown
-[Посетите Яндекс](https://ya.ru/)
-```
 
 # Задание 2. Проектирование микросервисной архитектуры
 
-В этом задании вам нужно предоставить только диаграммы в модели C4. Мы не просим вас отдельно описывать получившиеся микросервисы и то, как вы определили взаимодействия между компонентами To-Be системы. Если вы правильно подготовите диаграммы C4, они и так это покажут.
-
 **Диаграмма контейнеров (Containers)**
 
-Добавьте диаграмму.
+![to-be.png](schemas%2Fcontainer%2Fto-be.png)
 
 **Диаграмма компонентов (Components)**
 
-Добавьте диаграмму для каждого из выделенных микросервисов.
+***automation-service (Components)***
+
+![automation-service.png](schemas%2Fcomponents%2Fautomation-service.png)
+
+***device-service (Components)***
+
+![device-service.png](schemas%2Fcomponents%2Fdevice-service.png)
+
+***telemetry-service (Components)***
+
+![telemetry-service.png](schemas%2Fcomponents%2Ftelemetry-service.png)
 
 **Диаграмма кода (Code)**
 
-Добавьте одну диаграмму или несколько.
+***telemetry-flow (Code)***
+
+![telemetry-flow.png](schemas%2Fcode%2Ftelemetry-flow.png)
 
 # Задание 3. Разработка ER-диаграммы
 

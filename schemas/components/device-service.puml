@@ -1,0 +1,28 @@
+@startuml Device_Service_Components
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Компоненты Device Service
+
+Container_Boundary(device_service, "Device Service") {
+    Component(device_api, "Device API", "REST Controller", "HTTP endpoints для CRUD устройств")
+    Component(device_manager, "Device Manager", "Business Logic", "Управление жизненным циклом устройств")
+    Component(device_validator, "Device Validator", "Validator", "Валидация данных устройств")
+    Component(device_repo, "Device Repository", "Data Access", "Работа с Device DB")
+    Component(event_publisher, "Event Publisher", "Message Producer", "Публикация событий в RabbitMQ")
+}
+
+ContainerDb(device_db, "Device DB", "PostgreSQL")
+Container(message_broker, "RabbitMQ", "Message Broker")
+Container(api_gateway, "API Gateway", "Kong")
+
+Rel(api_gateway, device_api, "HTTP/REST")
+Rel(device_api, device_manager, "Calls")
+Rel(device_manager, device_validator, "Validates")
+Rel(device_manager, device_repo, "CRUD operations")
+Rel(device_manager, event_publisher, "Publishes events")
+Rel(device_repo, device_db, "SQL queries")
+Rel(event_publisher, message_broker, "DeviceCreated, DeviceUpdated events")
+
+@enduml
