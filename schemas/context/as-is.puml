@@ -1,0 +1,32 @@
+@startuml Warmhouse_Context_AS_IS
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title Контекстная диаграмма Warmhouse (AS-IS) - Текущее состояние
+
+Person(user, "Пользователь", "Владелец умного дома")
+Person(specialist, "Специалист поддержки", "Настраивает и обслуживает систему")
+
+System(warmhouse, "Warmhouse Monolith", "Монолитное приложение на Go для управления IoT устройствами умного дома")
+
+System_Ext(temperature_api, "Temperature API", "Внешний сервис предоставления данных о температуре")
+System_Ext(iot_devices, "IoT Датчики", "Физические датчики температуры, влажности, движения")
+
+Rel(user, warmhouse, "Управляет устройствами, просматривает данные", "HTTP/REST")
+Rel(specialist, warmhouse, "Настраивает систему, добавляет датчики", "HTTP/REST")
+
+Rel(warmhouse, temperature_api, "Получает данные о температуре", "HTTP/JSON")
+Rel(iot_devices, warmhouse, "Отправляют телеметрию", "HTTP/JSON")
+
+note right of warmhouse
+  **Проблемы текущей архитектуры:**
+  - Нет масштабируемости
+  - Single Point of Failure
+  - Downtime при деплое
+  - Синхронное polling датчиков
+  - Нет истории измерений
+  - Нет мультитенантности
+end note
+
+@enduml
