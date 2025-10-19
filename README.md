@@ -131,11 +131,38 @@
 
 ### 1. Тип API
 
-Укажите, какой тип API вы будете использовать для взаимодействия микросервисов. Объясните своё решение.
+Для микросервисной архитектуры Warmhouse используется **комбинированный подход**:
+
+**REST API** — для синхронного взаимодействия:
+- CRUD операции с устройствами (Device Service)
+- Запросы телеметрических данных (Telemetry Service)
+- Управление правилами автоматизации (Automation Service)
+- Преимущества: простота интеграции, стандартные HTTP методы, кеширование через HTTP headers
+
+**AsyncAPI (Event-Driven)** — для асинхронной коммуникации через RabbitMQ:
+- Публикация событий телеметрии (`telemetry.received`)
+- Срабатывание правил и выполнение действий (`action.triggered`)
+- Отправка уведомлений (`notification.sent`)
+- Преимущества: слабая связанность микросервисов, масштабируемость, отказоустойчивость
+
+**Обоснование**: REST API подходит для запросов, требующих немедленного ответа (получение списка устройств, создание правила). AsyncAPI используется для событий, где не нужна синхронная обработка (телеметрия генерируется каждые 5 секунд — синхронная обработка заблокирует систему).
 
 ### 2. Документация API
 
-Здесь приложите ссылки на документацию API для микросервисов, которые вы спроектировали в первой части проектной работы. Для документирования используйте Swagger/OpenAPI или AsyncAPI.
+**REST API (OpenAPI 3.0.3)**:
+- [device-service-openapi.yaml](api%2Fdevice-service-openapi.yaml) — управление устройствами (5 endpoints: CRUD + patch status)
+- [telemetry-service-openapi.yaml](api%2Ftelemetry-service-openapi.yaml) — сбор и получение телеметрии (3 endpoints: post data, get raw, get aggregated)
+- [automation-service-openapi.yaml](api%2Fautomation-service-openapi.yaml) — правила автоматизации (5 endpoints: CRUD rules + toggle)
+
+**AsyncAPI 2.6.0**:
+- [events-asyncapi.yaml](api%2Fevents-asyncapi.yaml) — асинхронные события через RabbitMQ (5 channels: device.created, device.updated, telemetry.received, action.triggered, notification.sent)
+
+Все API включают:
+- Полное описание endpoints/channels
+- Схемы запросов и ответов
+- HTTP коды статусов (200, 201, 400, 404, 500)
+- Примеры запросов (examples блок)
+- Описание параметров (query, path, body)
 
 # Задание 5. Работа с docker и docker-compose
 

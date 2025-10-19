@@ -1,0 +1,210 @@
+openapi: 3.0.3
+info:
+  title: Telemetry Service API
+  description: REST API для сбора и получения телеметрических данных
+  version: 1.0.0
+
+servers:
+  - url: https://api.warmhouse.com/telemetry/v1
+  - url: http://localhost:8081/api/v1
+
+tags:
+  - name: Telemetry
+    description: Операции с телеметрией
+
+paths:
+  /telemetry:
+    post:
+      tags:
+        - Telemetry
+      summary: Отправить данные телеметрии
+      description: IoT устройства отправляют телеметрию через этот endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryRequest'
+            example:
+              device_id: "550e8400-e29b-41d4-a716-446655440000"
+              metric_name: "temperature"
+              value: 22.5
+              unit: "celsius"
+              quality: "good"
+              timestamp: "2024-10-19T12:35:00Z"
+      responses:
+        '202':
+          description: Данные приняты для обработки
+        '400':
+          description: Невалидные данные
+
+  /telemetry/{device_id}:
+    get:
+      tags:
+        - Telemetry
+      summary: Получить телеметрию устройства
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: metric_name
+          in: query
+          schema:
+            type: string
+          description: Фильтр по имени метрики
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Начало периода
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Конец периода
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 1000
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TelemetryData'
+              example:
+                data:
+                  - id: 12345
+                    device_id: "550e8400-e29b-41d4-a716-446655440000"
+                    metric_name: "temperature"
+                    value: 22.5
+                    unit: "celsius"
+                    quality: "good"
+                    timestamp: "2024-10-19T12:35:00Z"
+                  - id: 12346
+                    device_id: "550e8400-e29b-41d4-a716-446655440000"
+                    metric_name: "temperature"
+                    value: 22.7
+                    unit: "celsius"
+                    quality: "good"
+                    timestamp: "2024-10-19T12:40:00Z"
+        '404':
+          description: Устройство не найдено
+
+  /telemetry/{device_id}/aggregated:
+    get:
+      tags:
+        - Telemetry
+      summary: Получить агрегированные данные
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: metric_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: interval
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [1min, 5min, 1hour, 1day]
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Агрегированные данные
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AggregatedData'
+
+components:
+  schemas:
+    TelemetryRequest:
+      type: object
+      required:
+        - device_id
+        - metric_name
+        - value
+        - unit
+        - timestamp
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        metric_name:
+          type: string
+        value:
+          type: number
+          format: double
+        unit:
+          type: string
+        quality:
+          type: string
+          enum: [good, bad, uncertain]
+          default: good
+        timestamp:
+          type: string
+          format: date-time
+
+    TelemetryData:
+      allOf:
+        - $ref: '#/components/schemas/TelemetryRequest'
+        - type: object
+          properties:
+            id:
+              type: integer
+              format: int64
+
+    AggregatedData:
+      type: object
+      properties:
+        period_start:
+          type: string
+          format: date-time
+        period_end:
+          type: string
+          format: date-time
+        avg_value:
+          type: number
+        min_value:
+          type: number
+        max_value:
+          type: number
+        count:
+          type: integer

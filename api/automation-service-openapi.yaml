@@ -1,0 +1,302 @@
+openapi: 3.0.3
+info:
+  title: Automation Service API
+  description: REST API для управления правилами и сценариями автоматизации
+  version: 1.0.0
+
+servers:
+  - url: https://api.warmhouse.com/automation/v1
+  - url: http://localhost:8082/api/v1
+
+tags:
+  - name: Rules
+    description: Операции с правилами
+
+paths:
+  /rules:
+    get:
+      tags:
+        - Rules
+      summary: Получить список правил
+      parameters:
+        - name: scenario_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: is_active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Список правил
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Rule'
+
+    post:
+      tags:
+        - Rules
+      summary: Создать правило
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRuleRequest'
+            example:
+              scenario_id: "880e8400-e29b-41d4-a716-446655440003"
+              device_id: "550e8400-e29b-41d4-a716-446655440000"
+              name: "Turn on heater when cold"
+              description: "Включить обогреватель если температура ниже 18°C"
+              is_active: true
+              priority: 1
+              triggers:
+                - trigger_type: "threshold"
+                  condition:
+                    metric: "temperature"
+                    operator: "<"
+                    value: 18
+              actions:
+                - target_device_id: "990e8400-e29b-41d4-a716-446655440004"
+                  action_type: "set_value"
+                  parameters:
+                    command: "turn_on"
+                    target_temperature: 22
+                  delay: 0
+      responses:
+        '201':
+          description: Правило создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+
+  /rules/{id}:
+    get:
+      tags:
+        - Rules
+      summary: Получить правило по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Правило найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+
+    put:
+      tags:
+        - Rules
+      summary: Обновить правило
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRuleRequest'
+      responses:
+        '200':
+          description: Правило обновлено
+
+    delete:
+      tags:
+        - Rules
+      summary: Удалить правило
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Правило удалено
+
+  /rules/{id}/toggle:
+    post:
+      tags:
+        - Rules
+      summary: Включить/выключить правило
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Статус правила изменён
+
+components:
+  schemas:
+    Rule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        scenario_id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        is_active:
+          type: boolean
+        priority:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Trigger'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Action'
+
+    CreateRuleRequest:
+      type: object
+      required:
+        - name
+        - triggers
+        - actions
+      properties:
+        scenario_id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        is_active:
+          type: boolean
+          default: true
+        priority:
+          type: integer
+          default: 0
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TriggerRequest'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionRequest'
+
+    UpdateRuleRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        is_active:
+          type: boolean
+        priority:
+          type: integer
+
+    Trigger:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+          format: uuid
+        trigger_type:
+          type: string
+          enum: [threshold, schedule, event]
+        condition:
+          type: object
+
+    TriggerRequest:
+      type: object
+      required:
+        - trigger_type
+        - condition
+      properties:
+        trigger_type:
+          type: string
+          enum: [threshold, schedule, event]
+        condition:
+          type: object
+
+    Action:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_id:
+          type: string
+          format: uuid
+        target_device_id:
+          type: string
+          format: uuid
+        action_type:
+          type: string
+          enum: [set_value, send_command, notify]
+        parameters:
+          type: object
+        delay:
+          type: integer
+
+    ActionRequest:
+      type: object
+      required:
+        - target_device_id
+        - action_type
+        - parameters
+      properties:
+        target_device_id:
+          type: string
+          format: uuid
+        action_type:
+          type: string
+          enum: [set_value, send_command, notify]
+        parameters:
+          type: object
+        delay:
+          type: integer
+          default: 0

@@ -1,0 +1,251 @@
+asyncapi: 2.6.0
+info:
+  title: Warmhouse Event-Driven API
+  version: 1.0.0
+  description: Асинхронная коммуникация между микросервисами через RabbitMQ
+
+servers:
+  production:
+    url: amqp://rabbitmq.warmhouse.com:5672
+    protocol: amqp
+    description: Production RabbitMQ
+
+channels:
+  device.created:
+    description: Событие создания нового устройства
+    publish:
+      summary: Device Service публикует событие о создании устройства
+      operationId: onDeviceCreated
+      message:
+        $ref: '#/components/messages/DeviceCreated'
+
+  device.updated:
+    description: Событие обновления устройства
+    publish:
+      summary: Device Service публикует событие об обновлении устройства
+      operationId: onDeviceUpdated
+      message:
+        $ref: '#/components/messages/DeviceUpdated'
+
+  telemetry.received:
+    description: Событие получения телеметрии
+    publish:
+      summary: Telemetry Service публикует новые данные телеметрии
+      operationId: onTelemetryReceived
+      message:
+        $ref: '#/components/messages/TelemetryReceived'
+    subscribe:
+      summary: Automation Service подписан на события телеметрии
+      operationId: processTelemetry
+      message:
+        $ref: '#/components/messages/TelemetryReceived'
+
+  action.triggered:
+    description: Событие срабатывания действия
+    publish:
+      summary: Automation Service публикует событие о срабатывании действия
+      operationId: onActionTriggered
+      message:
+        $ref: '#/components/messages/ActionTriggered'
+    subscribe:
+      summary: Device Service и Notification Service подписаны на действия
+      operationId: executeAction
+      message:
+        $ref: '#/components/messages/ActionTriggered'
+
+  notification.sent:
+    description: Событие отправки уведомления
+    publish:
+      summary: Notification Service публикует событие об отправке уведомления
+      operationId: onNotificationSent
+      message:
+        $ref: '#/components/messages/NotificationSent'
+
+components:
+  messages:
+    DeviceCreated:
+      name: DeviceCreated
+      title: Device Created Event
+      summary: Событие создания устройства
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          event_id:
+            type: string
+            format: uuid
+          event_type:
+            type: string
+            const: device.created
+          timestamp:
+            type: string
+            format: date-time
+          data:
+            type: object
+            properties:
+              device_id:
+                type: string
+                format: uuid
+              device_type_id:
+                type: string
+                format: uuid
+              room_id:
+                type: string
+                format: uuid
+              name:
+                type: string
+              status:
+                type: string
+        example:
+          event_id: "aa0e8400-e29b-41d4-a716-446655440010"
+          event_type: "device.created"
+          timestamp: "2024-10-19T12:30:00Z"
+          data:
+            device_id: "550e8400-e29b-41d4-a716-446655440000"
+            device_type_id: "660e8400-e29b-41d4-a716-446655440001"
+            room_id: "770e8400-e29b-41d4-a716-446655440002"
+            name: "Living Room Temperature Sensor"
+            status: "active"
+
+    DeviceUpdated:
+      name: DeviceUpdated
+      title: Device Updated Event
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          event_id:
+            type: string
+            format: uuid
+          event_type:
+            type: string
+            const: device.updated
+          timestamp:
+            type: string
+            format: date-time
+          data:
+            type: object
+            properties:
+              device_id:
+                type: string
+                format: uuid
+              changed_fields:
+                type: array
+                items:
+                  type: string
+
+    TelemetryReceived:
+      name: TelemetryReceived
+      title: Telemetry Received Event
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          event_id:
+            type: string
+            format: uuid
+          event_type:
+            type: string
+            const: telemetry.received
+          timestamp:
+            type: string
+            format: date-time
+          data:
+            type: object
+            properties:
+              device_id:
+                type: string
+                format: uuid
+              metric_name:
+                type: string
+              value:
+                type: number
+              unit:
+                type: string
+              quality:
+                type: string
+        example:
+          event_id: "bb0e8400-e29b-41d4-a716-446655440020"
+          event_type: "telemetry.received"
+          timestamp: "2024-10-19T12:35:00Z"
+          data:
+            device_id: "550e8400-e29b-41d4-a716-446655440000"
+            metric_name: "temperature"
+            value: 17.5
+            unit: "celsius"
+            quality: "good"
+
+    ActionTriggered:
+      name: ActionTriggered
+      title: Action Triggered Event
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          event_id:
+            type: string
+            format: uuid
+          event_type:
+            type: string
+            const: action.triggered
+          timestamp:
+            type: string
+            format: date-time
+          data:
+            type: object
+            properties:
+              rule_id:
+                type: string
+                format: uuid
+              action_id:
+                type: string
+                format: uuid
+              target_device_id:
+                type: string
+                format: uuid
+              action_type:
+                type: string
+              parameters:
+                type: object
+        example:
+          event_id: "cc0e8400-e29b-41d4-a716-446655440030"
+          event_type: "action.triggered"
+          timestamp: "2024-10-19T12:35:05Z"
+          data:
+            rule_id: "dd0e8400-e29b-41d4-a716-446655440040"
+            action_id: "ee0e8400-e29b-41d4-a716-446655440050"
+            target_device_id: "990e8400-e29b-41d4-a716-446655440004"
+            action_type: "set_value"
+            parameters:
+              command: "turn_on"
+              target_temperature: 22
+
+    NotificationSent:
+      name: NotificationSent
+      title: Notification Sent Event
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          event_id:
+            type: string
+            format: uuid
+          event_type:
+            type: string
+            const: notification.sent
+          timestamp:
+            type: string
+            format: date-time
+          data:
+            type: object
+            properties:
+              notification_id:
+                type: string
+                format: uuid
+              user_id:
+                type: string
+                format: uuid
+              channel_type:
+                type: string
+              status:
+                type: string

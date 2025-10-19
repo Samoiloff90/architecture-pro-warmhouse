@@ -1,0 +1,297 @@
+openapi: 3.0.3
+info:
+  title: Device Management Service API
+  description: REST API для управления устройствами умного дома
+  version: 1.0.0
+  contact:
+    name: Warmhouse Team
+    email: support@warmhouse.com
+
+servers:
+  - url: https://api.warmhouse.com/devices/v1
+    description: Production
+  - url: http://localhost:8080/api/v1
+    description: Development
+
+tags:
+  - name: Devices
+    description: Операции с устройствами
+  - name: DeviceTypes
+    description: Типы устройств
+
+paths:
+  /devices:
+    get:
+      tags:
+        - Devices
+      summary: Получить список устройств
+      description: Возвращает список всех устройств с фильтрацией
+      parameters:
+        - name: room_id
+          in: query
+          description: Фильтр по комнате
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          description: Фильтр по статусу
+          schema:
+            type: string
+            enum: [active, inactive, error]
+        - name: limit
+          in: query
+          description: Количество записей
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          description: Смещение для пагинации
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Device'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+              example:
+                data:
+                  - id: "550e8400-e29b-41d4-a716-446655440000"
+                    device_type_id: "660e8400-e29b-41d4-a716-446655440001"
+                    room_id: "770e8400-e29b-41d4-a716-446655440002"
+                    serial_number: "TEMP-001-2024"
+                    name: "Living Room Temperature Sensor"
+                    status: "active"
+                    firmware_version: "1.2.3"
+                    last_seen: "2024-10-19T12:30:00Z"
+                    created_at: "2024-01-15T10:00:00Z"
+                    metadata:
+                      location: "wall"
+                      battery_level: 85
+                total: 1
+                limit: 50
+                offset: 0
+        '401':
+          description: Не авторизован
+        '500':
+          description: Ошибка сервера
+
+    post:
+      tags:
+        - Devices
+      summary: Создать новое устройство
+      description: Регистрирует новое устройство в системе
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeviceRequest'
+            example:
+              device_type_id: "660e8400-e29b-41d4-a716-446655440001"
+              room_id: "770e8400-e29b-41d4-a716-446655440002"
+              serial_number: "TEMP-002-2024"
+              name: "Bedroom Temperature Sensor"
+              metadata:
+                location: "ceiling"
+      responses:
+        '201':
+          description: Устройство создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          description: Невалидные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Устройство с таким serial_number уже существует
+
+  /devices/{id}:
+    get:
+      tags:
+        - Devices
+      summary: Получить устройство по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '404':
+          description: Устройство не найдено
+
+    put:
+      tags:
+        - Devices
+      summary: Обновить устройство
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeviceRequest'
+      responses:
+        '200':
+          description: Устройство обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '404':
+          description: Устройство не найдено
+
+    delete:
+      tags:
+        - Devices
+      summary: Удалить устройство
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Устройство удалено
+        '404':
+          description: Устройство не найдено
+
+  /devices/{id}/status:
+    patch:
+      tags:
+        - Devices
+      summary: Обновить статус устройства
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [active, inactive, error]
+            example:
+              status: "active"
+      responses:
+        '200':
+          description: Статус обновлён
+        '404':
+          description: Устройство не найдено
+
+components:
+  schemas:
+    Device:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        device_type_id:
+          type: string
+          format: uuid
+        room_id:
+          type: string
+          format: uuid
+        serial_number:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, error]
+        firmware_version:
+          type: string
+        last_seen:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+
+    CreateDeviceRequest:
+      type: object
+      required:
+        - device_type_id
+        - room_id
+        - serial_number
+        - name
+      properties:
+        device_type_id:
+          type: string
+          format: uuid
+        room_id:
+          type: string
+          format: uuid
+        serial_number:
+          type: string
+        name:
+          type: string
+        metadata:
+          type: object
+
+    UpdateDeviceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        room_id:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
